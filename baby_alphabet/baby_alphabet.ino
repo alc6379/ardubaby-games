@@ -12,6 +12,12 @@ const char alphabet[] = {
   'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
 };
 
+int colorState = 0;
+
+const uint8_t colorMap[2][2] = {
+  {BLACK, WHITE},
+  {WHITE, BLACK}
+};
 
 const uint16_t alphabetSong[] = {
   NOTE_C4, NOTE_C4, NOTE_G4, NOTE_G4, NOTE_A4, NOTE_A4, NOTE_G4,
@@ -45,7 +51,7 @@ const uint16_t alphabetScore[] PROGMEM = {
   NOTE_E4, 500, //T
   NOTE_E4, 500, //U
   NOTE_D4, 500, //V
-  NOTE_G4, 250, NOTE_G4, 250, NOTE_G4, 500,//W 
+  NOTE_G4, 250, NOTE_G4, 250, NOTE_G4, 500,//W
   NOTE_F4, 500, //X
   NOTE_E4, 500, //Y
   NOTE_E4, 500, //Z
@@ -80,12 +86,27 @@ bool buttonJustPressed(uint8_t button)
   return false;
 }
 
+void nextLetter(int letterIndex) {
+  colorState = !colorState;
+  int colorScheme[] = {colorMap[colorState][0], colorMap[colorState][1]};
+  
+  arduboy.fillScreen(colorMap[colorState][0]);
+  arduboy.drawChar(50, 10, alphabet[letterIndex], colorScheme[1], colorScheme[0], 6);
+
+  //TODO make a lookup table with the note and how many times/how long to play it
+  sound.tone(alphabetSong[letterIndex], 500);
+  arduboy.setCursor(0, 0);
+  arduboy.display();
+}
+
 void setup() {
   // put your setup code here, to run once:
   arduboy.begin();
   arduboy.clear();
-  playSong();
+//  playSong();
   counter = 0;
+  nextLetter(counter);
+  arduboy.display();
 }
 
 void loop() {
@@ -100,7 +121,7 @@ void loop() {
     else {
       counter = 0;
     }
-    sound.tone(alphabetSong[counter], 500);
+    nextLetter(counter);
   }
   //Check if the DOWN_BUTTON is being pressed
   if ( buttonJustPressed(LEFT_BUTTON ) || buttonJustPressed( DOWN_BUTTON ) == true ) {
@@ -111,14 +132,10 @@ void loop() {
     else {
       counter = 25;
     }
-    sound.tone(alphabetSong[counter], 500);
+    nextLetter(counter);
   }
 
   if (buttonJustPressed(A_BUTTON) || buttonJustPressed(B_BUTTON) == true) {
     playSong();
   }
-
-  arduboy.setCursor(0, 0);
-  arduboy.drawChar(50, 10, alphabet[counter], WHITE, BLACK, 6);
-  arduboy.display();
 }
