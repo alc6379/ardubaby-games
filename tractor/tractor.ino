@@ -1,5 +1,6 @@
 #include <Arduboy2.h>
-#include "OldMcDonald.h";
+#include "OldMcDonald.h"
+#include "BitMaps.h"
 #include <ArduboyTones.h>
 
 Arduboy2 arduboy;
@@ -11,58 +12,20 @@ enum facingDirection tractorDirection = right;
 
 const int MAX_X_POS = 103; //farthest to the left the tractor can go before it wraps around
 const int MAX_Y_POS = 47; //farthest to the bottom the tractor can go before it wraps around
+const int BEEP_COOLDOWN = 60; //delay playing "beep beep" if the kid is pressing it too quickly
+const int SONG_COOLDOWN = 120;
 
-const byte PROGMEM tractor_left[] = {
-  24, 16,
-  //frame 0
-  0x00, 0x40, 0xe0, 0xa0, 0xa0, 0xa0, 0xe0, 0xb8, 0xa0, 0xa0, 0xff, 0x43, 0x43, 0xc3, 0xff, 0xc3, 0xc3, 0x7f, 0x58, 0x50, 0xd0, 0xb0, 0x40, 0x80,
-  0x3f, 0x0f, 0x3d, 0x66, 0x4a, 0x52, 0x66, 0x3d, 0x0f, 0x0f, 0x1f, 0x1e, 0x1e, 0x1f, 0x1f, 0x31, 0x60, 0x4a, 0x44, 0x4a, 0x60, 0x31, 0x1f, 0x00,
-  //frame 1
-  0x00, 0x40, 0xe0, 0xa0, 0xa0, 0xa2, 0xe4, 0xb8, 0xa0, 0xa0, 0xff, 0x43, 0x43, 0xc3, 0xff, 0xc3, 0xc3, 0x7f, 0x58, 0x50, 0xd0, 0xb0, 0x40, 0x80,
-  0x3f, 0x0f, 0x3d, 0x66, 0x52, 0x4a, 0x66, 0x3d, 0x0f, 0x0f, 0x1f, 0x1e, 0x1e, 0x1f, 0x1f, 0x31, 0x60, 0x44, 0x4e, 0x44, 0x60, 0x31, 0x1f, 0x00
-
-};
-
-const byte PROGMEM tractor_right[] = {
-  24, 16,
-  //frame 0
-  0x80, 0x40, 0xb0, 0xd0, 0x50, 0x58, 0x7f, 0xc3, 0xc3, 0xff, 0xc3, 0x43, 0x43, 0xff, 0xa0, 0xa0, 0xb8, 0xe0, 0xa0, 0xa0, 0xa0, 0xe0, 0x40, 0x00,
-  0x00, 0x1f, 0x31, 0x60, 0x4a, 0x44, 0x4a, 0x60, 0x31, 0x1f, 0x1f, 0x1e, 0x1e, 0x1f, 0x0f, 0x0f, 0x3d, 0x66, 0x52, 0x4a, 0x66, 0x3d, 0x0f, 0x3f,
-
-  //frame 1
-  0x80, 0x40, 0xb0, 0xd0, 0x50, 0x58, 0x7f, 0xc3, 0xc3, 0xff, 0xc3, 0x43, 0x43, 0xff, 0xa0, 0xa0, 0xb8, 0xe4, 0xa2, 0xa0, 0xa0, 0xe0, 0x40, 0x00,
-  0x00, 0x1f, 0x31, 0x60, 0x44, 0x4e, 0x44, 0x60, 0x31, 0x1f, 0x1f, 0x1e, 0x1e, 0x1f, 0x0f, 0x0f, 0x3d, 0x66, 0x4a, 0x52, 0x66, 0x3d, 0x0f, 0x3f
-};
-
-uint8_t previousButtonState = 0;
-uint8_t currentButtonState = 0;
 
 int tractorPositionX = 0;
 int tractorPositionY = 0;
+int beepCount = 0;
+int songCount = 0;
 byte frame = 0;
-
-// Needs to be called at the start of the loop function
-void updateButtonState(Arduboy2 &ab)
-{
-  previousButtonState = currentButtonState;
-  currentButtonState = ab.buttonsState();
-}
-
-// Returns if a button was just pressed
-bool buttonJustPressed(uint8_t button)
-{
-
-  if (!(previousButtonState & button) && (currentButtonState & button))
-  {
-    return true;
-  }
-  return false;
-}
 
 void setup() {
   arduboy.begin();
   arduboy.clear();
-  arduboy.setFrameRate(15);
+  arduboy.setFrameRate(30);
 }
 
 void loop() {
@@ -70,12 +33,14 @@ void loop() {
 
   if (!(arduboy.nextFrame())) return;
   arduboy.clear();
+  drawBackground();
+  arduboy.pollButtons();
 
   if (tractorDirection == right) {
-    sprites.drawOverwrite(tractorPositionX, tractorPositionY, tractor_right, frame);
+    sprites.drawSelfMasked(tractorPositionX, tractorPositionY, tractor_right, frame);
   }
   if (tractorDirection == left) {
-    sprites.drawOverwrite(tractorPositionX, tractorPositionY, tractor_left, frame);
+    sprites.drawSelfMasked(tractorPositionX, tractorPositionY, tractor_left, frame);
   }
   if (arduboy.everyXFrames(1)) {
     if (arduboy.pressed(RIGHT_BUTTON)) {
@@ -118,11 +83,38 @@ void loop() {
   if (moved) {
     sound.tones(tractorSound);
   }
-  if (arduboy.pressed(A_BUTTON)) {
-    sound.tones(beepBeepSound);
+  if (arduboy.justPressed(A_BUTTON)) {
+    if (beepCount == 0 || beepCount > BEEP_COOLDOWN) {
+      sound.tones(beepBeepSound);
+      beepCount = 1;
+    }
   }
-  if (arduboy.pressed(B_BUTTON)) {
-    sound.tones(oldMcDonaldSong);
+  if (beepCount > 0) {
+    beepCount++;
+  }
+  if (arduboy.justPressed(B_BUTTON)) {
+    if (songCount == 0 || songCount > SONG_COOLDOWN) {
+      sound.tones(oldMcDonaldSong);
+      songCount = 1;
+    }
+  }
+
+  if (songCount > 0) {
+    songCount++;
   }
   arduboy.display();
 }
+
+void drawBackground() {
+  /* ganked background code from
+      https://community.arduboy.com/t/make-your-own-arduboy-game-part-6-graphics/2440
+  */
+  for ( int backgroundx = 0; backgroundx < 128; backgroundx = backgroundx + 8 ) {
+    //For each row in the column
+    for ( int backgroundy = 0; backgroundy < 64; backgroundy = backgroundy + 16 ) {
+      //Draw a background tile
+      arduboy.drawBitmap( backgroundx, backgroundy, background, 8, 8, WHITE );
+    }
+  }
+}
+

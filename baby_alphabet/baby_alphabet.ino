@@ -65,29 +65,6 @@ void playSong() {
   sound.tones(alphabetScore);
 }
 
-//TODO put this in a header file. 
-// Stores the button state
-uint8_t previousButtonState = 0;
-uint8_t currentButtonState = 0;
-
-
-// Needs to be called at the start of the loop function
-void updateButtonState(Arduboy2 &ab)
-{
-  previousButtonState = currentButtonState;
-  currentButtonState = ab.buttonsState();
-}
-
-// Returns if a button was just pressed
-bool buttonJustPressed(uint8_t button)
-{
-  if (!(previousButtonState & button) && (currentButtonState & button))
-  {
-    return true;
-  }
-  return false;
-}
-
 void nextLetter(int letterIndex) {
   colorState = !colorState;
   int colorScheme[] = {colorMap[colorState][0], colorMap[colorState][1]};
@@ -112,10 +89,9 @@ void setup() {
 }
 
 void loop() {
-  updateButtonState(arduboy);
-  // put your main code here, to run repeatedly:
+  arduboy.pollButtons();   
   arduboy.clear();
-  if ( buttonJustPressed(RIGHT_BUTTON ) || buttonJustPressed( UP_BUTTON ) == true ) {
+  if ( arduboy.justPressed(RIGHT_BUTTON ) || arduboy.justPressed( UP_BUTTON ) == true ) {
     if (counter <= 24) {
       //Increase counter by 1
       counter = counter + 1;
@@ -126,7 +102,7 @@ void loop() {
     nextLetter(counter);
   }
   //Check if the DOWN_BUTTON is being pressed
-  if ( buttonJustPressed(LEFT_BUTTON ) || buttonJustPressed( DOWN_BUTTON ) == true ) {
+  if ( arduboy.justPressed(LEFT_BUTTON ) || arduboy.justPressed( DOWN_BUTTON ) == true ) {
     if (counter >= 1) {
       //Decrease counter
       counter = counter - 1;
@@ -137,7 +113,7 @@ void loop() {
     nextLetter(counter);
   }
 
-  if (buttonJustPressed(A_BUTTON) || buttonJustPressed(B_BUTTON) == true) {
+  if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON) == true) {
     playSong();
   }
 }
