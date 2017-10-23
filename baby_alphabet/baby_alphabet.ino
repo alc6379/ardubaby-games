@@ -61,13 +61,15 @@ const uint16_t alphabetScore[] PROGMEM = {
 };
 
 
+void playSong() {
+  sound.tones(alphabetScore);
+}
+
+//TODO put this in a header file. 
 // Stores the button state
 uint8_t previousButtonState = 0;
 uint8_t currentButtonState = 0;
 
-void playSong() {
-  sound.tones(alphabetScore);
-}
 
 // Needs to be called at the start of the loop function
 void updateButtonState(Arduboy2 &ab)
